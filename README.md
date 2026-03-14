@@ -1,85 +1,85 @@
 # Polymarket UI
 
-Telegram Mini App dashboard для [Polymarket ML Trading System](https://github.com/MarchenkoRuslan/polymarket).
+Telegram Mini App dashboard for the [Polymarket ML Trading System](https://github.com/MarchenkoRuslan/polymarket).
 
-Mobile-first PWA: обзор рынков, ML-сигналы, графики производительности, новости — работает как standalone веб-приложение или как Telegram Mini App.
+Mobile-first PWA: market overview, ML signals, performance charts, news feed — works as a standalone web app or inside Telegram as a Mini App.
 
-## Быстрый старт
+## Quick Start
 
 ```bash
 npm install
 npm run dev        # http://localhost:3000
 ```
 
-## Архитектура
+## Architecture
 
 ```
 public/
 ├── index.html              SPA entry point
 ├── manifest.json           PWA manifest
 ├── sw.js                   Service Worker (cache-first + stale-while-revalidate)
-├── css/app.css             Стили (CSS custom properties, mobile-first)
-├── icons/                  SVG-иконки для PWA
+├── css/app.css             Styles (CSS custom properties, mobile-first)
+├── icons/                  SVG icons for PWA
 └── js/
-    ├── app.js              Инициализация: навигация, роуты, Telegram WebApp
-    ├── api.js              API-клиент (fetch + retry + AbortController)
-    ├── config.js           API_BASE_URL
-    ├── router.js           Hash-роутер (#home, #markets, #market/{id})
-    ├── theme.js            Темы Telegram / dark mode
-    ├── utils.js            DOM-хелперы, форматирование, escapeHtml
-    ├── charts.js           Обёртки Chart.js (line, bar, doughnut)
+    ├── app.js              Entry: navigation, route registration, Telegram WebApp init
+    ├── api.js              API client (fetch + retry + AbortController)
+    ├── config.js           API_BASE_URL constant
+    ├── router.js           Hash-based SPA router
+    ├── theme.js            Telegram theme / dark mode support
+    ├── utils.js            DOM helpers, formatters, escapeHtml, sanitizeUrl
+    ├── charts.js           Chart.js wrappers (line, bar, doughnut)
     └── screens/
-        ├── home.js         Дашборд: статус, KPI, топ-рынки
-        ├── markets.js      Список рынков с поиском и пагинацией
-        ├── marketDetail.js Детали рынка: цена, стакан, сигналы, P&L
-        ├── signals.js      ML-сигналы: buy/hold/sell, распределение
-        ├── performance.js  P&L: кумулятивный график, прибыль по рынкам
-        └── news.js         Новости из RSS
+        ├── home.js         Dashboard: status, KPIs, top markets, signal summary
+        ├── markets.js      Searchable/paginated market list
+        ├── marketDetail.js Market detail: price chart, stats, technicals, signals, P&L
+        ├── signals.js      ML signals: buy/hold/sell distribution, per-market bars
+        ├── performance.js  Cumulative P&L, profit by market, spread timeline
+        └── news.js         RSS news cards
 ```
 
-## Экраны
+## Screens
 
-| Экран | Роут | Описание |
-|-------|------|----------|
-| Home | `#home` | Статус системы, KPI, сводка сигналов, топ-рынки |
-| Markets | `#markets` | Поиск по рынкам, карточки с ценой/сигналом/объёмом |
-| Market Detail | `#market/{id}` | График цены, торговая статистика, тех. индикаторы, история сигналов |
-| Signals | `#signals` | Buy/Hold/Sell сводка, гистограмма распределения, бары по рынкам |
-| Performance | `#performance` | Кумулятивный P&L, прибыль по рынкам, спред |
-| News | `#news` | Карточки новостей из RSS |
+| Screen | Route | Description |
+|--------|-------|-------------|
+| Home | `#home` | System status, KPIs, signal summary, top markets |
+| Markets | `#markets` | Searchable market cards with price, signal, volume |
+| Market Detail | `#market/{id}` | Price chart, trading stats, technicals, signal history, P&L |
+| Signals | `#signals` | Buy/Hold/Sell summary, distribution histogram, per-market bars |
+| Performance | `#performance` | Cumulative P&L, profit by market, bid-ask spread timeline |
+| News | `#news` | RSS news cards with source and timestamp |
 
 ## Backend API
 
-Бэкенд находится в [отдельном репозитории](https://github.com/MarchenkoRuslan/polymarket).
+The backend lives in a [separate repository](https://github.com/MarchenkoRuslan/polymarket).
 
 - **Base URL:** `https://polymarket-predictor.up.railway.app/api/v1`
-- **Swagger:** https://polymarket-predictor.up.railway.app/docs
-- **Эндпоинты:** `/status`, `/analytics`, `/markets`, `/markets/{id}`, `/trades`, `/orderbook`, `/signals`, `/features`, `/news`, `/results`
+- **Swagger docs:** https://polymarket-predictor.up.railway.app/docs
+- **Endpoints:** `/status`, `/analytics`, `/markets`, `/markets/{id}`, `/trades`, `/orderbook`, `/signals`, `/features`, `/news`, `/results`
 
-### Конфигурация API
+### API Configuration
 
-Отредактируйте `public/js/config.js`:
+Edit `public/js/config.js` to point to your backend:
 
 ```js
 export const API_BASE_URL = 'https://your-api-domain.com/api/v1';
 ```
 
-> Backend должен разрешать CORS для origin UI (настройка `CORS_ORIGINS` в бэкенде).
+> The backend must allow CORS for the UI origin (set `CORS_ORIGINS` in the backend config).
 
-## Деплой
+## Deployment
 
 ### Railway
 
-1. Создайте проект из этого репозитория
-2. Railway автоматически определит Node.js через `package.json`
-3. Start command: `npm start` (автоматически)
-4. `PORT` устанавливается Railway автоматически
+1. Create a new project from this repo
+2. Railway auto-detects Node.js via `package.json`
+3. Start command: `npm start` (automatic)
+4. `PORT` is set by Railway automatically
 
 ### Vercel / Netlify
 
 - **Publish directory:** `public/`
-- **Build command:** не требуется
-- `serve` не нужен на статическом хостинге
+- **Build command:** none required
+- `serve` is not needed on static hosting platforms
 
 ### Docker
 
@@ -93,32 +93,32 @@ EXPOSE 3000
 CMD ["npm", "start"]
 ```
 
-## Telegram Mini App
+## Telegram Mini App Setup
 
-1. Создайте бота через [@BotFather](https://t.me/BotFather)
-2. Установите URL: BotFather → ваш бот → Bot Settings → Menu Button → укажите URL деплоя
-3. Приложение автоматически определяет Telegram и адаптирует тему
+1. Create a bot via [@BotFather](https://t.me/BotFather)
+2. Set the Web App URL: BotFather → your bot → Bot Settings → Menu Button → set URL to the deployed app
+3. The app auto-detects the Telegram environment and adapts theme colors
 
-## Стек технологий
+## Tech Stack
 
-| Технология | Назначение |
-|-----------|-----------|
-| Vanilla JS (ES modules) | Без фреймворка, без шага сборки |
-| Chart.js 4.4.7 | Графики (CDN) |
-| Telegram Web App SDK | Интеграция с Telegram |
-| `serve` | Dev-сервер и продакшен (Railway) |
-| Service Worker | PWA, офлайн-кэширование |
+| Technology | Purpose |
+|-----------|---------|
+| Vanilla JS (ES modules) | No framework, no build step |
+| Chart.js 4.4.7 | Charts (CDN) |
+| Telegram Web App SDK | Telegram integration |
+| `serve` | Dev server and production hosting (Railway) |
+| Service Worker | PWA, offline caching |
 
-## Ключевые решения
+## Key Design Decisions
 
-- **Без фреймворка** — минимальный размер бандла, мгновенная загрузка в Telegram
-- **Hash-роутинг** — работает без серверной конфигурации, совместим со статическим хостингом
-- **AbortController** — отмена запросов при навигации, предотвращение устаревших рендеров
-- **Экранирование HTML** — все пользовательские данные проходят через `escapeHtml()` для защиты от XSS
-- **Retry с exponential backoff** — устойчивость к сетевым сбоям (до 3 попыток)
-- **Адаптивная тема** — автоматическое определение Telegram-темы или системных настроек
-- **PWA** — установка на домашний экран, офлайн-доступ к оболочке приложения
+- **No framework** — minimal bundle size, instant load inside Telegram
+- **Hash routing** — works without server-side configuration, compatible with static hosting
+- **AbortController** — cancels in-flight requests on navigation, prevents stale renders
+- **HTML escaping** — all user-controlled data passes through `escapeHtml()` to prevent XSS
+- **Retry with exponential backoff** — resilience against transient network errors (up to 3 retries)
+- **Adaptive theming** — auto-detects Telegram theme or system dark/light mode
+- **PWA** — installable to home screen, offline access to the app shell
 
-## Лицензия
+## License
 
 MIT

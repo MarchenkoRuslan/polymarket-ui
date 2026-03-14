@@ -1,5 +1,5 @@
 import { api, getSignalController } from '../api.js';
-import { formatDate, showLoading, showEmpty, showError, escapeHtml, sanitizeUrl } from '../utils.js';
+import { formatDate, showLoading, showEmpty, showError, escapeHtml, sanitizeUrl, stripHtml } from '../utils.js';
 
 export async function render(container) {
     showLoading(container);
@@ -17,13 +17,15 @@ export async function render(container) {
         container.innerHTML = `
             <div class="screen">
                 <div class="screen-title">News</div>
-                <div class="screen-subtitle">${items.length} article${items.length !== 1 ? 's' : ''}</div>
+                <div class="screen-subtitle">${items.length} article${items.length !== 1 ? 's' : ''} from ${_uniqueSources(items)} source${_uniqueSources(items) !== 1 ? 's' : ''}</div>
                 <div id="news-list"></div>
             </div>`;
 
         const listEl = container.querySelector('#news-list');
+        const fragment = document.createDocumentFragment();
 
         items.forEach(item => {
+            const cleanSummary = stripHtml(item.summary);
             const card = document.createElement('a');
             card.className = 'news-card';
             card.href = sanitizeUrl(item.link);
@@ -32,17 +34,22 @@ export async function render(container) {
 
             card.innerHTML = `
                 <div class="news-card-title">${escapeHtml(item.title || 'Untitled')}</div>
-                ${item.summary ? `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escapeHtml(item.summary)}</div>` : ''}
+                ${cleanSummary ? `<div class="news-card-summary">${escapeHtml(cleanSummary)}</div>` : ''}
                 <div class="news-card-footer">
                     <span class="news-card-source">${escapeHtml(item.source || 'Unknown')}</span>
                     <span>${formatDate(item.ts)}</span>
                 </div>`;
 
-            listEl.appendChild(card);
+            fragment.appendChild(card);
         });
+
+        listEl.appendChild(fragment);
     } catch (err) {
         if (err.name === 'AbortError') return;
         showError(container, err.message);
     }
 }
 
+function _uniqueSources(items) {
+    return new Set(items.map(i => i.source)).size;
+}

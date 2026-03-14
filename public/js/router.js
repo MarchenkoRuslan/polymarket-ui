@@ -51,5 +51,6 @@ function _handle() {
         }
     }
 
+    _container.scrollTo(0, 0);
     if (_onNavigate) _onNavigate(screen, params);
 }

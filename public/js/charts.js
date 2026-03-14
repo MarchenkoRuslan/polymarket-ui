@@ -7,11 +7,33 @@ export function destroyAllCharts() {
     active.length = 0;
 }
 
+const crosshairPlugin = {
+    id: 'crosshair',
+    afterDraw(chart) {
+        if (!chart._active?.length) return;
+        const { ctx, chartArea: { top, bottom } } = chart;
+        const x = chart._active[0].element.x;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = getChartColors().secondary + '60';
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.restore();
+    },
+};
+
 function baseOpts(colors) {
     return {
         responsive: true,
         maintainAspectRatio: false,
         animation: { duration: 400 },
+        interaction: {
+            mode: 'index',
+            intersect: false,
+        },
         plugins: {
             legend: { display: false },
             tooltip: {
@@ -23,6 +45,8 @@ function baseOpts(colors) {
                 cornerRadius: 8,
                 padding: 10,
                 titleFont: { weight: '600' },
+                displayColors: false,
+                caretSize: 6,
             },
         },
         scales: {
@@ -47,15 +71,23 @@ export function createLineChart(canvas, labels, datasets, extraOpts = {}) {
         backgroundColor: (ds.color || c.accent) + '18',
         borderWidth: 2,
         pointRadius: 0,
-        pointHitRadius: 8,
+        pointHitRadius: 12,
+        pointHoverRadius: 4,
+        pointHoverBackgroundColor: ds.color || c.accent,
+        pointHoverBorderColor: c.bg,
+        pointHoverBorderWidth: 2,
         tension: 0.3,
         fill: ds.fill !== false,
         ...ds,
     }));
+
+    const opts = { ...baseOpts(c), ...extraOpts };
+
     const chart = new Chart(canvas, {
         type: 'line',
         data: { labels, datasets: dsets },
-        options: { ...baseOpts(c), ...extraOpts },
+        options: opts,
+        plugins: [crosshairPlugin],
     });
     active.push(chart);
     return chart;
@@ -84,7 +116,7 @@ export function createDoughnutChart(canvas, labels, data, colors) {
         type: 'doughnut',
         data: {
             labels,
-            datasets: [{ data, backgroundColor: colors || [c.positive, c.warning, c.negative], borderWidth: 0 }],
+            datasets: [{ data, backgroundColor: colors || [c.positive, c.warning, c.negative], borderWidth: 0, hoverOffset: 6 }],
         },
         options: {
             responsive: true,
@@ -103,6 +135,14 @@ export function createDoughnutChart(canvas, labels, data, colors) {
                     borderColor: c.grid,
                     borderWidth: 1,
                     cornerRadius: 8,
+                    displayColors: true,
+                    callbacks: {
+                        label(ctx) {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const pct = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : '0';
+                            return ` ${ctx.label}: ${ctx.raw} (${pct}%)`;
+                        },
+                    },
                 },
             },
         },

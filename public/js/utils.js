@@ -39,6 +39,13 @@ export function sanitizeUrl(url) {
     return '#';
 }
 
+export function stripHtml(html) {
+    if (!html) return '';
+    const d = document.createElement('div');
+    d.innerHTML = html;
+    return d.textContent || '';
+}
+
 /* ===== Formatting ===== */
 
 export function formatPrice(v) {

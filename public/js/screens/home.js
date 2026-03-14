@@ -1,10 +1,18 @@
 import { api, getSignalController } from '../api.js';
-import { formatPrice, formatPnl, formatNumber, signalBadge, truncate, sparklineSVG, showLoading, showError, escapeHtml, escapeAttr } from '../utils.js';
+import { formatPrice, formatPnl, formatNumber, signalBadge, truncate, sparklineSVG, showLoading, showError, escapeHtml, escapeAttr, formatDate } from '../utils.js';
 import { createDoughnutChart } from '../charts.js';
-import { navigate } from '../router.js';
+import { navigate, currentScreen } from '../router.js';
+
+const REFRESH_INTERVAL = 60_000;
+let _refreshTimer = null;
 
 export async function render(container) {
+    _clearRefreshTimer();
     showLoading(container);
+    await _load(container);
+}
+
+async function _load(container) {
     const signal = getSignalController();
 
     try {
@@ -24,9 +32,18 @@ export async function render(container) {
         const holdCount = analytics.signal_distribution
             ? analytics.signal_distribution.filter(b => b.bucket >= 0.35 && b.bucket < 0.55).reduce((s, b) => s + b.count, 0) : 0;
 
+        const now = new Date();
+        const refreshedAt = now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+
         container.innerHTML = `
             <div class="screen">
-                <div class="screen-title">Dashboard</div>
+                <div class="screen-header-row">
+                    <div class="screen-title">Dashboard</div>
+                    <div class="freshness-badge" id="freshness-badge" title="Auto-refreshes every minute">
+                        <span class="freshness-dot"></span>
+                        ${refreshedAt}
+                    </div>
+                </div>
 
                 <div class="status-banner ${hasErrors ? 'error' : 'ok'}">
                     <span class="status-icon">${hasErrors ? '⚠️' : '✅'}</span>
@@ -131,9 +148,26 @@ export async function render(container) {
         }
 
         _loadSparklines(marketsEl, top.length > 0 ? top.map(t => t.market_id) : (markets.items || []).slice(0, 3).map(m => m.market_id), signal);
+
+        _scheduleRefresh(container);
     } catch (err) {
         if (err.name === 'AbortError') return;
         showError(container, err.message);
+    }
+}
+
+function _scheduleRefresh(container) {
+    _clearRefreshTimer();
+    _refreshTimer = setTimeout(() => {
+        if (currentScreen() !== 'home') return;
+        _load(container);
+    }, REFRESH_INTERVAL);
+}
+
+function _clearRefreshTimer() {
+    if (_refreshTimer) {
+        clearTimeout(_refreshTimer);
+        _refreshTimer = null;
     }
 }
 
@@ -172,4 +206,3 @@ function _marketCard(id, question, price, volume, signalLabel) {
     card.addEventListener('click', () => navigate(`market/${encodeURIComponent(id)}`));
     return card;
 }
-
