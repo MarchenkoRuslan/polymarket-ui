@@ -1,4 +1,4 @@
-const CACHE = 'polymarket-v3';
+const CACHE = 'polymarket-v4';
 
 const SHELL = [
     '/',
@@ -19,6 +19,7 @@ const SHELL = [
     '/js/screens/news.js',
     '/manifest.json',
     '/icons/icon-192.svg',
+    '/icons/icon-512.svg',
 ];
 
 const CDN = [
