@@ -3,24 +3,36 @@ import { formatPrice, formatNumber, signalBadge, truncate, showLoading, showEmpt
 import { navigate } from '../router.js';
 
 const PAGE_SIZE = 20;
-let _offset = 0;
-let _filter = '';
-let _cachedItems = null;
-let _cachedVolume = {};
-let _cachedPrice = {};
-let _cachedSignals = {};
+
+let _state = {
+    visibleCount: PAGE_SIZE,
+    filter: '',
+    items: null,
+    volume: {},
+    price: {},
+    signals: {},
+};
+
+function _resetState() {
+    _state = {
+        visibleCount: PAGE_SIZE,
+        filter: '',
+        items: null,
+        volume: {},
+        price: {},
+        signals: {},
+    };
+}
 
 export async function render(container) {
-    _offset = 0;
-    _filter = '';
-    _cachedItems = null;
+    _resetState();
 
     container.innerHTML = `
         <div class="screen">
             <div class="screen-title">Markets</div>
             <div class="search-bar">
                 <span class="search-icon">🔍</span>
-                <input class="search-input" id="market-search" type="text" placeholder="Search markets…" autocomplete="off"/>
+                <input class="search-input" id="market-search" type="text" placeholder="Search markets…" autocomplete="off" aria-label="Search markets"/>
             </div>
             <div id="markets-list"></div>
             <div id="markets-more" style="padding:12px 0"></div>
@@ -31,8 +43,8 @@ export async function render(container) {
     searchInput.addEventListener('input', () => {
         clearTimeout(debounce);
         debounce = setTimeout(() => {
-            _filter = searchInput.value.trim().toLowerCase();
-            _offset = 0;
+            _state.filter = searchInput.value.trim().toLowerCase();
+            _state.visibleCount = PAGE_SIZE;
             _renderPage(container);
         }, 300);
     });
@@ -53,22 +65,22 @@ async function _fetchAndRender(container) {
             api.getSignals(undefined, 500, signal).catch(() => ({ items: [] })),
         ]);
 
-        _cachedSignals = {};
+        _state.signals = {};
         (signalsData.items || []).forEach(s => {
-            if (!_cachedSignals[s.market_id] || s.ts > _cachedSignals[s.market_id].ts) {
-                _cachedSignals[s.market_id] = s;
+            if (!_state.signals[s.market_id] || s.ts > _state.signals[s.market_id].ts) {
+                _state.signals[s.market_id] = s;
             }
         });
 
-        _cachedVolume = {};
-        _cachedPrice = {};
+        _state.volume = {};
+        _state.price = {};
         (analyticsData?.trade_stats || []).forEach(t => {
-            _cachedVolume[t.market_id] = t.total_volume;
-            _cachedPrice[t.market_id] = t.avg_price;
+            _state.volume[t.market_id] = t.total_volume;
+            _state.price[t.market_id] = t.avg_price;
         });
 
-        _cachedItems = (marketsData.items || []).slice();
-        _cachedItems.sort((a, b) => (_cachedVolume[b.market_id] || 0) - (_cachedVolume[a.market_id] || 0));
+        _state.items = (marketsData.items || []).slice();
+        _state.items.sort((a, b) => (_state.volume[b.market_id] || 0) - (_state.volume[a.market_id] || 0));
 
         _renderPage(container);
     } catch (err) {
@@ -78,12 +90,12 @@ async function _fetchAndRender(container) {
 }
 
 function _getFiltered() {
-    if (!_cachedItems) return [];
-    if (!_filter) return _cachedItems;
-    return _cachedItems.filter(m =>
-        (m.question || '').toLowerCase().includes(_filter) ||
-        (m.event || '').toLowerCase().includes(_filter) ||
-        m.market_id.toLowerCase().includes(_filter)
+    if (!_state.items) return [];
+    if (!_state.filter) return _state.items;
+    return _state.items.filter(m =>
+        (m.question || '').toLowerCase().includes(_state.filter) ||
+        (m.event || '').toLowerCase().includes(_state.filter) ||
+        m.market_id.toLowerCase().includes(_state.filter)
     );
 }
 
@@ -93,47 +105,47 @@ function _renderPage(container) {
     if (!listEl || !moreEl) return;
 
     const items = _getFiltered();
-    const page = items.slice(0, _offset + PAGE_SIZE);
+    const page = items.slice(0, _state.visibleCount);
 
     listEl.innerHTML = '';
 
     if (page.length === 0) {
-        showEmpty(listEl, '📊', 'No markets found', _filter ? 'Try a different search' : 'Markets will appear after data collection');
+        showEmpty(listEl, '📊', 'No markets found', _state.filter ? 'Try a different search' : 'Markets will appear after data collection');
         moreEl.innerHTML = '';
         return;
     }
 
+    const fragment = document.createDocumentFragment();
     page.forEach(m => {
-        const sig = _cachedSignals[m.market_id];
+        const sig = _state.signals[m.market_id];
         const card = document.createElement('div');
         card.className = 'market-card';
         card.innerHTML = `
             <div class="market-card-body">
                 <div class="market-card-question">${escapeHtml(truncate(m.question || m.market_id, 70))}</div>
                 <div class="market-card-meta">
-                    ${_cachedVolume[m.market_id] ? `<span>Vol: ${formatNumber(_cachedVolume[m.market_id])}</span>` : ''}
+                    ${_state.volume[m.market_id] ? `<span>Vol: ${formatNumber(_state.volume[m.market_id])}</span>` : ''}
                     ${sig ? signalBadge(sig.signal_label) : ''}
                     ${m.outcome_settled ? '<span class="badge badge-info">Settled</span>' : ''}
                 </div>
             </div>
             <div class="market-card-right">
-                ${_cachedPrice[m.market_id] != null ? `<div class="market-card-price">${formatPrice(_cachedPrice[m.market_id])}</div>` : ''}
+                ${_state.price[m.market_id] != null ? `<div class="market-card-price">${formatPrice(_state.price[m.market_id])}</div>` : ''}
                 <div class="card-chevron">›</div>
             </div>`;
         card.addEventListener('click', () => navigate(`market/${encodeURIComponent(m.market_id)}`));
-        listEl.appendChild(card);
+        fragment.appendChild(card);
     });
+    listEl.appendChild(fragment);
 
-    _offset = page.length;
-
-    if (_offset < items.length) {
-        moreEl.innerHTML = `<button class="btn btn-secondary" id="btn-load-more">Load more (${items.length - _offset} remaining)</button>`;
+    const remaining = items.length - page.length;
+    if (remaining > 0) {
+        moreEl.innerHTML = `<button class="btn btn-secondary" id="btn-load-more">Load more (${remaining} remaining)</button>`;
         moreEl.querySelector('#btn-load-more').addEventListener('click', () => {
-            _offset += PAGE_SIZE;
+            _state.visibleCount += PAGE_SIZE;
             _renderPage(container);
         });
     } else {
         moreEl.innerHTML = `<div class="text-center text-secondary" style="font-size:13px;padding:8px">${items.length} market${items.length !== 1 ? 's' : ''}</div>`;
     }
 }
-

@@ -1,4 +1,4 @@
-const CACHE = 'polymarket-v2';
+const CACHE = 'polymarket-v3';
 
 const SHELL = [
     '/',
@@ -22,7 +22,7 @@ const SHELL = [
 ];
 
 const CDN = [
-    'https://cdn.jsdelivr.net/npm/chart.js@4',
+    'https://cdn.jsdelivr.net/npm/chart.js@4.4.7',
     'https://telegram.org/js/telegram-web-app.js',
 ];
 
