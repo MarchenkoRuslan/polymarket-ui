@@ -1,19 +1,26 @@
-import { api } from '../api.js';
-import { formatPrice, formatPnl, formatNumber, formatDate, signalBadge, showLoading, showError } from '../utils.js';
+import { api, getSignalController } from '../api.js';
+import { formatPrice, formatPnl, formatNumber, formatDate, signalBadge, showLoading, showError, showEmpty, escapeHtml } from '../utils.js';
 import { createLineChart, createBarChart } from '../charts.js';
 import { getChartColors } from '../theme.js';
 
 export async function render(container, marketId) {
     marketId = decodeURIComponent(marketId || '');
+
+    if (!marketId) {
+        showEmpty(container, '📊', 'Market Not Found', 'No market ID provided');
+        return;
+    }
+
     showLoading(container);
+    const signal = getSignalController();
 
     try {
         const [market, trades, signals, features, results] = await Promise.all([
-            api.getMarket(marketId),
-            api.getTrades(marketId, 200),
-            api.getSignals(marketId, 100),
-            api.getFeatures(marketId, 500),
-            api.getResults(marketId, 200),
+            api.getMarket(marketId, signal),
+            api.getTrades(marketId, 200, signal),
+            api.getSignals(marketId, 100, signal),
+            api.getFeatures(marketId, 500, signal),
+            api.getResults(marketId, 200, signal),
         ]);
 
         const tradeItems = (trades.items || []).slice().reverse();
@@ -40,7 +47,7 @@ export async function render(container, marketId) {
         container.innerHTML = `
             <div class="screen">
                 <div class="detail-header">
-                    <div class="detail-question">${_esc(market.question || market.market_id)}</div>
+                    <div class="detail-question">${escapeHtml(market.question || market.market_id)}</div>
                     ${latestPrice != null ? `
                     <div class="detail-price-row">
                         <span class="detail-price">${formatPrice(latestPrice)}</span>
@@ -74,6 +81,7 @@ export async function render(container, marketId) {
         _renderPriceChart(container, tradeItems);
         _renderPnlChart(container, resultItems);
     } catch (err) {
+        if (err.name === 'AbortError') return;
         showError(container, err.message);
     }
 }
@@ -165,7 +173,7 @@ function _techHtml(featureMap) {
     });
     return `
         <table class="data-table">
-            ${sorted.map(k => `<tr><td>${_esc(k)}</td><td class="text-right font-mono">${featureMap[k].feature_value.toFixed(4)}</td></tr>`).join('')}
+            ${sorted.map(k => `<tr><td>${escapeHtml(k)}</td><td class="text-right font-mono">${featureMap[k].feature_value.toFixed(4)}</td></tr>`).join('')}
         </table>`;
 }
 
@@ -205,9 +213,3 @@ function _initCollapsibles(container) {
     });
 }
 
-function _esc(s) {
-    if (!s) return '';
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-}

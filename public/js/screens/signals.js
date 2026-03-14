@@ -1,16 +1,17 @@
-import { api } from '../api.js';
-import { signalBadge, truncate, showLoading, showEmpty, showError } from '../utils.js';
+import { api, getSignalController } from '../api.js';
+import { signalBadge, truncate, showLoading, showEmpty, showError, escapeHtml } from '../utils.js';
 import { createBarChart, createDoughnutChart } from '../charts.js';
 import { getChartColors } from '../theme.js';
 import { navigate } from '../router.js';
 
 export async function render(container) {
     showLoading(container);
+    const signal = getSignalController();
 
     try {
         const [analytics, signalsData] = await Promise.all([
-            api.getAnalytics(),
-            api.getSignals(undefined, 500),
+            api.getAnalytics(signal),
+            api.getSignals(undefined, 500, signal),
         ]);
 
         const signals = signalsData.items || [];
@@ -116,7 +117,7 @@ export async function render(container) {
             card.className = 'market-card';
             card.innerHTML = `
                 <div class="market-card-body">
-                    <div class="market-card-question">${_esc(truncate(s.market_id, 50))}</div>
+                    <div class="market-card-question">${escapeHtml(truncate(s.market_id, 50))}</div>
                     <div class="market-card-meta">
                         <span class="font-mono">${s.prediction.toFixed(3)}</span>
                     </div>
@@ -128,13 +129,8 @@ export async function render(container) {
             listEl.appendChild(card);
         });
     } catch (err) {
+        if (err.name === 'AbortError') return;
         showError(container, err.message);
     }
 }
 
-function _esc(s) {
-    if (!s) return '';
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-}

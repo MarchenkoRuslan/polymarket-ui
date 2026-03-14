@@ -1,5 +1,5 @@
-import { api } from '../api.js';
-import { formatPrice, formatNumber, signalBadge, truncate, showLoading, showEmpty, showError } from '../utils.js';
+import { api, getSignalController } from '../api.js';
+import { formatPrice, formatNumber, signalBadge, truncate, showLoading, showEmpty, showError, escapeHtml } from '../utils.js';
 import { navigate } from '../router.js';
 
 const PAGE_SIZE = 20;
@@ -44,11 +44,13 @@ async function _fetchAndRender(container) {
     const listEl = container.querySelector('#markets-list');
     showLoading(listEl);
 
+    const signal = getSignalController();
+
     try {
         const [marketsData, analyticsData, signalsData] = await Promise.all([
-            api.getMarkets(200, 0, false),
-            api.getAnalytics().catch(() => null),
-            api.getSignals(undefined, 500).catch(() => ({ items: [] })),
+            api.getMarkets(200, 0, false, signal),
+            api.getAnalytics(signal).catch(() => null),
+            api.getSignals(undefined, 500, signal).catch(() => ({ items: [] })),
         ]);
 
         _cachedSignals = {};
@@ -70,6 +72,7 @@ async function _fetchAndRender(container) {
 
         _renderPage(container);
     } catch (err) {
+        if (err.name === 'AbortError') return;
         showError(listEl, err.message);
     }
 }
@@ -106,7 +109,7 @@ function _renderPage(container) {
         card.className = 'market-card';
         card.innerHTML = `
             <div class="market-card-body">
-                <div class="market-card-question">${_esc(truncate(m.question || m.market_id, 70))}</div>
+                <div class="market-card-question">${escapeHtml(truncate(m.question || m.market_id, 70))}</div>
                 <div class="market-card-meta">
                     ${_cachedVolume[m.market_id] ? `<span>Vol: ${formatNumber(_cachedVolume[m.market_id])}</span>` : ''}
                     ${sig ? signalBadge(sig.signal_label) : ''}
@@ -134,9 +137,3 @@ function _renderPage(container) {
     }
 }
 
-function _esc(s) {
-    if (!s) return '';
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-}

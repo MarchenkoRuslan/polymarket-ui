@@ -1,11 +1,12 @@
-import { api } from '../api.js';
-import { formatDate, showLoading, showEmpty, showError } from '../utils.js';
+import { api, getSignalController } from '../api.js';
+import { formatDate, showLoading, showEmpty, showError, escapeHtml } from '../utils.js';
 
 export async function render(container) {
     showLoading(container);
+    const signal = getSignalController();
 
     try {
-        const data = await api.getNews(50);
+        const data = await api.getNews(50, signal);
         const items = data.items || [];
 
         if (items.length === 0) {
@@ -30,23 +31,18 @@ export async function render(container) {
             card.rel = 'noopener';
 
             card.innerHTML = `
-                <div class="news-card-title">${_esc(item.title || 'Untitled')}</div>
-                ${item.summary ? `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${_esc(item.summary)}</div>` : ''}
+                <div class="news-card-title">${escapeHtml(item.title || 'Untitled')}</div>
+                ${item.summary ? `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escapeHtml(item.summary)}</div>` : ''}
                 <div class="news-card-footer">
-                    <span class="news-card-source">${_esc(item.source || 'Unknown')}</span>
+                    <span class="news-card-source">${escapeHtml(item.source || 'Unknown')}</span>
                     <span>${formatDate(item.ts)}</span>
                 </div>`;
 
             listEl.appendChild(card);
         });
     } catch (err) {
+        if (err.name === 'AbortError') return;
         showError(container, err.message);
     }
 }
 
-function _esc(s) {
-    if (!s) return '';
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-}

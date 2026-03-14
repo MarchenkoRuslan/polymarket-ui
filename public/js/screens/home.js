@@ -1,16 +1,17 @@
-import { api } from '../api.js';
-import { formatPrice, formatPnl, formatNumber, signalBadge, truncate, sparklineSVG, showLoading, showError } from '../utils.js';
+import { api, getSignalController } from '../api.js';
+import { formatPrice, formatPnl, formatNumber, signalBadge, truncate, sparklineSVG, showLoading, showError, escapeHtml, escapeAttr } from '../utils.js';
 import { createDoughnutChart } from '../charts.js';
 import { navigate } from '../router.js';
 
 export async function render(container) {
     showLoading(container);
+    const signal = getSignalController();
 
     try {
         const [status, analytics, markets] = await Promise.all([
-            api.getStatus(),
-            api.getAnalytics(),
-            api.getMarkets(5, 0, false),
+            api.getStatus(signal),
+            api.getAnalytics(signal),
+            api.getMarkets(5, 0, false, signal),
         ]);
 
         const hasErrors = status.migration_error || status.last_pipeline_error || status.db_error;
@@ -31,7 +32,7 @@ export async function render(container) {
                     <span class="status-icon">${hasErrors ? '⚠️' : '✅'}</span>
                     <span class="status-text">
                         ${hasErrors ? 'Issues detected' : 'System running normally'}
-                        ${hasErrors ? `<span class="status-detail">${_esc(errorMsg)}</span>` : ''}
+                        ${hasErrors ? `<span class="status-detail">${escapeHtml(errorMsg)}</span>` : ''}
                     </span>
                 </div>
 
@@ -131,6 +132,7 @@ export async function render(container) {
 
         _loadSparklines(marketsEl, top.length > 0 ? top.map(t => t.market_id) : (markets.items || []).slice(0, 3).map(m => m.market_id));
     } catch (err) {
+        if (err.name === 'AbortError') return;
         showError(container, err.message);
     }
 }
@@ -155,14 +157,14 @@ function _marketCard(id, question, price, volume, signalLabel) {
     card.className = 'market-card';
     card.innerHTML = `
         <div class="market-card-body">
-            <div class="market-card-question">${_esc(truncate(question || id, 80))}</div>
+            <div class="market-card-question">${escapeHtml(truncate(question || id, 80))}</div>
             <div class="market-card-meta">
                 ${volume != null ? `<span>Vol: ${formatNumber(volume)}</span>` : ''}
                 ${signalLabel ? signalBadge(signalLabel) : ''}
             </div>
         </div>
         <div class="market-card-right">
-            <div data-sparkline="${_attr(id)}" class="sparkline-slot"></div>
+            <div data-sparkline="${escapeAttr(id)}" class="sparkline-slot"></div>
             ${price != null ? `<div class="market-card-price">${formatPrice(price)}</div>` : ''}
             <div class="card-chevron">›</div>
         </div>
@@ -171,14 +173,3 @@ function _marketCard(id, question, price, volume, signalLabel) {
     return card;
 }
 
-function _esc(s) {
-    if (!s) return '';
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-}
-
-function _attr(s) {
-    if (!s) return '';
-    return s.replace(/"/g, '&quot;').replace(/</g, '&lt;');
-}

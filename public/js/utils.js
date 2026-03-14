@@ -59,6 +59,18 @@ export function truncate(str, max = 60) {
     return str.length > max ? str.slice(0, max) + '…' : str;
 }
 
+export function escapeHtml(s) {
+    if (!s) return '';
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+export function escapeAttr(s) {
+    if (!s) return '';
+    return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 export function showLoading(container) {
     container.innerHTML = `
         <div class="loading-spinner">
@@ -70,9 +82,9 @@ export function showLoading(container) {
 export function showEmpty(container, icon, title, text) {
     container.innerHTML = `
         <div class="empty-state">
-            <div class="empty-state-icon">${icon}</div>
-            <div class="empty-state-title">${title}</div>
-            <div class="empty-state-text">${text}</div>
+            <div class="empty-state-icon">${escapeHtml(icon)}</div>
+            <div class="empty-state-title">${escapeHtml(title)}</div>
+            <div class="empty-state-text">${escapeHtml(text)}</div>
         </div>`;
 }
 
@@ -81,7 +93,7 @@ export function showError(container, msg) {
         <div class="empty-state">
             <div class="empty-state-icon">⚠️</div>
             <div class="empty-state-title">Error</div>
-            <div class="empty-state-text">${msg}</div>
+            <div class="empty-state-text">${escapeHtml(msg)}</div>
         </div>`;
 }
 
