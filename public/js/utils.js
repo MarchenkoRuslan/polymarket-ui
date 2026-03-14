@@ -51,7 +51,16 @@ export function formatDate(ts) {
 
 export function signalBadge(label) {
     const cls = label === 'buy' ? 'badge-buy' : label === 'sell' ? 'badge-sell' : 'badge-hold';
-    return `<span class="badge ${cls}">${label}</span>`;
+    return `<span class="badge ${cls}">${escapeHtml(label)}</span>`;
+}
+
+export function sanitizeUrl(url) {
+    if (!url) return '#';
+    try {
+        const parsed = new URL(url);
+        if (parsed.protocol === 'https:' || parsed.protocol === 'http:') return url;
+    } catch { /* invalid URL */ }
+    return '#';
 }
 
 export function truncate(str, max = 60) {

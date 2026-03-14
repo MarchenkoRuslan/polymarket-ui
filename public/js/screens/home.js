@@ -130,17 +130,17 @@ export async function render(container) {
             }
         }
 
-        _loadSparklines(marketsEl, top.length > 0 ? top.map(t => t.market_id) : (markets.items || []).slice(0, 3).map(m => m.market_id));
+        _loadSparklines(marketsEl, top.length > 0 ? top.map(t => t.market_id) : (markets.items || []).slice(0, 3).map(m => m.market_id), signal);
     } catch (err) {
         if (err.name === 'AbortError') return;
         showError(container, err.message);
     }
 }
 
-async function _loadSparklines(container, marketIds) {
+async function _loadSparklines(container, marketIds, signal) {
     if (!marketIds.length) return;
     const results = await Promise.allSettled(
-        marketIds.map(id => api.getTrades(id, 50))
+        marketIds.map(id => api.getTrades(id, 50, signal))
     );
     results.forEach((r, i) => {
         if (r.status !== 'fulfilled') return;

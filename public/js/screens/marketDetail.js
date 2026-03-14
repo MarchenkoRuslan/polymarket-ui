@@ -1,5 +1,5 @@
 import { api, getSignalController } from '../api.js';
-import { formatPrice, formatPnl, formatNumber, formatDate, signalBadge, showLoading, showError, showEmpty, escapeHtml } from '../utils.js';
+import { formatPrice, formatPnl, formatNumber, formatDate, signalBadge, showLoading, showError, showEmpty, escapeHtml, sanitizeUrl } from '../utils.js';
 import { createLineChart, createBarChart } from '../charts.js';
 import { getChartColors } from '../theme.js';
 
@@ -60,7 +60,7 @@ export async function render(container, marketId) {
                     </div>
                 </div>
 
-                ${market.polymarket_url ? `<a class="detail-link" href="${market.polymarket_url}" target="_blank" rel="noopener">Trade on Polymarket ↗</a>` : ''}
+                ${market.polymarket_url ? `<a class="detail-link" href="${sanitizeUrl(market.polymarket_url)}" target="_blank" rel="noopener">Trade on Polymarket ↗</a>` : ''}
 
                 ${tradeItems.length > 2 ? `
                 <div class="chart-card">

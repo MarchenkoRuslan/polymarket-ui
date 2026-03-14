@@ -1,5 +1,5 @@
 import { api, getSignalController } from '../api.js';
-import { formatDate, showLoading, showEmpty, showError, escapeHtml } from '../utils.js';
+import { formatDate, showLoading, showEmpty, showError, escapeHtml, sanitizeUrl } from '../utils.js';
 
 export async function render(container) {
     showLoading(container);
@@ -26,7 +26,7 @@ export async function render(container) {
         items.forEach(item => {
             const card = document.createElement('a');
             card.className = 'news-card';
-            card.href = item.link || '#';
+            card.href = sanitizeUrl(item.link);
             card.target = '_blank';
             card.rel = 'noopener';
 
