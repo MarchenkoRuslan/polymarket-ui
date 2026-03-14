@@ -16,6 +16,31 @@ export function h(tag, attrs = {}, ...children) {
     return el;
 }
 
+/* ===== Sanitization ===== */
+
+export function escapeHtml(s) {
+    if (!s) return '';
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+export function escapeAttr(s) {
+    if (!s) return '';
+    return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+export function sanitizeUrl(url) {
+    if (!url) return '#';
+    try {
+        const parsed = new URL(url);
+        if (parsed.protocol === 'https:' || parsed.protocol === 'http:') return url;
+    } catch { /* invalid URL */ }
+    return '#';
+}
+
+/* ===== Formatting ===== */
+
 export function formatPrice(v) {
     const n = Number(v);
     if (isNaN(n)) return '—';
@@ -49,35 +74,16 @@ export function formatDate(ts) {
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-export function signalBadge(label) {
-    const cls = label === 'buy' ? 'badge-buy' : label === 'sell' ? 'badge-sell' : 'badge-hold';
-    return `<span class="badge ${cls}">${escapeHtml(label)}</span>`;
-}
-
-export function sanitizeUrl(url) {
-    if (!url) return '#';
-    try {
-        const parsed = new URL(url);
-        if (parsed.protocol === 'https:' || parsed.protocol === 'http:') return url;
-    } catch { /* invalid URL */ }
-    return '#';
-}
-
 export function truncate(str, max = 60) {
     if (!str) return '';
     return str.length > max ? str.slice(0, max) + '…' : str;
 }
 
-export function escapeHtml(s) {
-    if (!s) return '';
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-}
+/* ===== UI Components ===== */
 
-export function escapeAttr(s) {
-    if (!s) return '';
-    return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+export function signalBadge(label) {
+    const cls = label === 'buy' ? 'badge-buy' : label === 'sell' ? 'badge-sell' : 'badge-hold';
+    return `<span class="badge ${cls}">${escapeHtml(label)}</span>`;
 }
 
 export function showLoading(container) {
