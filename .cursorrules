@@ -1,0 +1,75 @@
+# Polymarket UI — Cursor Agent Rules
+
+## Project Overview
+
+Telegram Mini App (Web App) dashboard for the Polymarket ML Trading System.
+Frontend-only repository; the backend API lives at https://github.com/MarchenkoRuslan/polymarket.
+
+## Tech Stack
+
+- **Vanilla JavaScript** (ES modules, no framework, no build step)
+- **Chart.js 4** (loaded via CDN, pinned to 4.4.7)
+- **Telegram Web App SDK** (loaded via CDN)
+- **`serve`** as static file server for dev/production
+- **PWA** with service worker and manifest
+
+## Architecture
+
+```
+public/
+├── index.html            — SPA entry point
+├── manifest.json         — PWA manifest
+├── sw.js                 — Service worker (cache-first for shell, stale-while-revalidate for CDN)
+├── css/app.css           — All styles (CSS custom properties, mobile-first)
+├── icons/                — SVG icons for PWA
+└── js/
+    ├── app.js            — Entry: nav setup, route registration, Telegram WebApp init
+    ├── api.js            — Fetch-based API client with retries + AbortController
+    ├── config.js         — API_BASE_URL constant
+    ├── router.js         — Hash-based SPA router
+    ├── theme.js          — Telegram theme / dark mode support
+    ├── utils.js          — DOM helpers, formatters, escapeHtml/escapeAttr, loading/error states
+    ├── charts.js         — Chart.js wrapper functions (line, bar, doughnut)
+    └── screens/
+        ├── home.js       — Dashboard: status, KPIs, signal summary, top markets
+        ├── markets.js    — Searchable/paginated market list
+        ├── marketDetail.js — Market detail: price chart, stats, technicals, signals, P&L
+        ├── signals.js    — ML signals overview: distribution, per-market bars
+        ├── performance.js — P&L charts, profit by market, spread timeline
+        └── news.js       — RSS news cards
+```
+
+## Backend API
+
+- Base URL: `https://polymarket-predictor.up.railway.app/api/v1`
+- Swagger: https://polymarket-predictor.up.railway.app/docs
+- Endpoints: /status, /analytics, /markets, /trades, /orderbook, /signals, /features, /news, /results
+
+## Key Conventions
+
+1. **No build step** — files are served as-is from `public/`. No TypeScript, no bundler.
+2. **ES Modules** — all JS files use `import`/`export`. Entry loaded with `type="module"`.
+3. **Hash routing** — routes are `#home`, `#markets`, `#market/{id}`, `#signals`, `#performance`, `#news`.
+4. **Screen render pattern** — each screen exports `async function render(container, ...params)`.
+5. **HTML escaping** — always use `escapeHtml()` / `escapeAttr()` from `utils.js` for user content.
+6. **AbortController** — call `getSignalController()` at the start of each screen render; check `err.name === 'AbortError'` in catch.
+7. **Chart cleanup** — `destroyAllCharts()` is called automatically on route change.
+8. **Mobile-first CSS** — CSS custom properties for theming, responsive breakpoints at 480px and 768px.
+9. **Telegram integration** — app detects Telegram WebApp SDK and adapts theme, back button, etc.
+
+## Common Patterns
+
+### Adding a new screen
+1. Create `public/js/screens/myScreen.js` with `export async function render(container) { ... }`
+2. Register in `app.js`: `registerRoute('myscreen', myScreenRender)`
+3. Add nav item to `NAV_ITEMS` if it should appear in bottom nav
+4. Add to `sw.js` SHELL array for offline caching
+
+### Adding a new API endpoint
+1. Add method to `api` object in `api.js`
+2. Pass `signal` parameter through for AbortController support
+
+### Styling
+- Use CSS custom properties from `:root` (e.g., `var(--bg-primary)`, `var(--accent)`)
+- Dark mode uses `[data-theme="dark"]` attribute
+- Telegram theme colors override CSS variables at runtime

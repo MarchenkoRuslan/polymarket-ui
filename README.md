@@ -1,59 +1,124 @@
 # Polymarket UI
 
-Telegram Web App (Mini App) dashboard for the Polymarket Trading System.  
-Этот репозиторий содержит только фронтенд; backend API размещён в отдельном репозитории.
+Telegram Mini App dashboard для [Polymarket ML Trading System](https://github.com/MarchenkoRuslan/polymarket).
 
-Mobile-first SPA: market overview, ML signals, performance charts, news — работает как standalone static site или внутри Telegram как Mini App.
+Mobile-first PWA: обзор рынков, ML-сигналы, графики производительности, новости — работает как standalone веб-приложение или как Telegram Mini App.
 
-## Quick start (local)
+## Быстрый старт
 
 ```bash
 npm install
 npm run dev        # http://localhost:3000
 ```
 
-## Screens
+## Архитектура
 
-| Screen | Route | Description |
-|--------|-------|-------------|
-| Home | `#home` | System status, KPIs, top markets, signal summary |
-| Markets | `#markets` | Searchable market cards with price/signal/volume |
-| Market Detail | `#market/{id}` | Price chart, trading stats, technicals, signal history |
-| Signals | `#signals` | Buy/Hold/Sell summary, distribution, per-market bars |
-| Performance | `#performance` | Cumulative P&L, profit by market, spread timeline |
-| News | `#news` | RSS news cards |
+```
+public/
+├── index.html              SPA entry point
+├── manifest.json           PWA manifest
+├── sw.js                   Service Worker (cache-first + stale-while-revalidate)
+├── css/app.css             Стили (CSS custom properties, mobile-first)
+├── icons/                  SVG-иконки для PWA
+└── js/
+    ├── app.js              Инициализация: навигация, роуты, Telegram WebApp
+    ├── api.js              API-клиент (fetch + retry + AbortController)
+    ├── config.js           API_BASE_URL
+    ├── router.js           Hash-роутер (#home, #markets, #market/{id})
+    ├── theme.js            Темы Telegram / dark mode
+    ├── utils.js            DOM-хелперы, форматирование, escapeHtml
+    ├── charts.js           Обёртки Chart.js (line, bar, doughnut)
+    └── screens/
+        ├── home.js         Дашборд: статус, KPI, топ-рынки
+        ├── markets.js      Список рынков с поиском и пагинацией
+        ├── marketDetail.js Детали рынка: цена, стакан, сигналы, P&L
+        ├── signals.js      ML-сигналы: buy/hold/sell, распределение
+        ├── performance.js  P&L: кумулятивный график, прибыль по рынкам
+        └── news.js         Новости из RSS
+```
 
-## Configuration
+## Экраны
 
-Edit `public/js/config.js` to set the backend API URL:
+| Экран | Роут | Описание |
+|-------|------|----------|
+| Home | `#home` | Статус системы, KPI, сводка сигналов, топ-рынки |
+| Markets | `#markets` | Поиск по рынкам, карточки с ценой/сигналом/объёмом |
+| Market Detail | `#market/{id}` | График цены, торговая статистика, тех. индикаторы, история сигналов |
+| Signals | `#signals` | Buy/Hold/Sell сводка, гистограмма распределения, бары по рынкам |
+| Performance | `#performance` | Кумулятивный P&L, прибыль по рынкам, спред |
+| News | `#news` | Карточки новостей из RSS |
+
+## Backend API
+
+Бэкенд находится в [отдельном репозитории](https://github.com/MarchenkoRuslan/polymarket).
+
+- **Base URL:** `https://polymarket-predictor.up.railway.app/api/v1`
+- **Swagger:** https://polymarket-predictor.up.railway.app/docs
+- **Эндпоинты:** `/status`, `/analytics`, `/markets`, `/markets/{id}`, `/trades`, `/orderbook`, `/signals`, `/features`, `/news`, `/results`
+
+### Конфигурация API
+
+Отредактируйте `public/js/config.js`:
 
 ```js
 export const API_BASE_URL = 'https://your-api-domain.com/api/v1';
 ```
 
-**Note:** Backend должен разрешать CORS для origin UI (`CORS_ORIGINS`).
+> Backend должен разрешать CORS для origin UI (настройка `CORS_ORIGINS` в бэкенде).
 
-## Deploy to Railway
+## Деплой
 
-1. Create a new project on Railway from this repo
-2. Railway auto-detects Node.js via `package.json`
-3. Start command: `npm start` (automatic)
-4. Set `PORT` env var if needed (Railway does this automatically)
+### Railway
 
-## Deploy to Vercel / Netlify
+1. Создайте проект из этого репозитория
+2. Railway автоматически определит Node.js через `package.json`
+3. Start command: `npm start` (автоматически)
+4. `PORT` устанавливается Railway автоматически
 
-Set the publish directory to `public/` and no build command is needed.  
-Configure `public/` as the root — `serve` is not required for static hosting.
+### Vercel / Netlify
 
-## Telegram Web App setup
+- **Publish directory:** `public/`
+- **Build command:** не требуется
+- `serve` не нужен на статическом хостинге
 
-1. Create a bot via [@BotFather](https://t.me/BotFather)
-2. Set the Web App URL: BotFather → your bot → Bot Settings → Menu Button → set URL to the deployed app
-3. The app auto-detects Telegram environment and adapts theme colors
+### Docker
 
-## Tech stack
+```dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --production
+COPY public ./public
+EXPOSE 3000
+CMD ["npm", "start"]
+```
 
-- Vanilla JS (ES modules, no build step)
-- Chart.js 4 (CDN)
-- Telegram Web App SDK
-- `serve` for local dev and production hosting (Railway)
+## Telegram Mini App
+
+1. Создайте бота через [@BotFather](https://t.me/BotFather)
+2. Установите URL: BotFather → ваш бот → Bot Settings → Menu Button → укажите URL деплоя
+3. Приложение автоматически определяет Telegram и адаптирует тему
+
+## Стек технологий
+
+| Технология | Назначение |
+|-----------|-----------|
+| Vanilla JS (ES modules) | Без фреймворка, без шага сборки |
+| Chart.js 4.4.7 | Графики (CDN) |
+| Telegram Web App SDK | Интеграция с Telegram |
+| `serve` | Dev-сервер и продакшен (Railway) |
+| Service Worker | PWA, офлайн-кэширование |
+
+## Ключевые решения
+
+- **Без фреймворка** — минимальный размер бандла, мгновенная загрузка в Telegram
+- **Hash-роутинг** — работает без серверной конфигурации, совместим со статическим хостингом
+- **AbortController** — отмена запросов при навигации, предотвращение устаревших рендеров
+- **Экранирование HTML** — все пользовательские данные проходят через `escapeHtml()` для защиты от XSS
+- **Retry с exponential backoff** — устойчивость к сетевым сбоям (до 3 попыток)
+- **Адаптивная тема** — автоматическое определение Telegram-темы или системных настроек
+- **PWA** — установка на домашний экран, офлайн-доступ к оболочке приложения
+
+## Лицензия
+
+MIT
