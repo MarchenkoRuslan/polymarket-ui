@@ -5,6 +5,8 @@
 Telegram Mini App (Web App) dashboard for the Polymarket ML Trading System.
 Frontend-only repository; the backend API lives at https://github.com/MarchenkoRuslan/polymarket.
 
+**All code, comments, and documentation must be in English.**
+
 ## Tech Stack
 
 - **Vanilla JavaScript** (ES modules, no framework, no build step)
@@ -26,24 +28,25 @@ public/
     ├── app.js            — Entry: nav setup, route registration, Telegram WebApp init
     ├── api.js            — Fetch-based API client with retries + AbortController
     ├── config.js         — API_BASE_URL constant
-    ├── router.js         — Hash-based SPA router
+    ├── router.js         — Hash-based SPA router with scroll-to-top
     ├── theme.js          — Telegram theme / dark mode support
-    ├── utils.js          — DOM helpers, formatters, escapeHtml/escapeAttr, loading/error states
-    ├── charts.js         — Chart.js wrapper functions (line, bar, doughnut)
+    ├── utils.js          — Sanitization (escapeHtml, escapeAttr, sanitizeUrl, stripHtml),
+    │                       formatters, DOM helpers, loading/error states
+    ├── charts.js         — Chart.js wrappers with crosshair plugin, tooltips
     └── screens/
-        ├── home.js       — Dashboard: status, KPIs, signal summary, top markets
-        ├── markets.js    — Searchable/paginated market list
-        ├── marketDetail.js — Market detail: price chart, stats, technicals, signals, P&L
-        ├── signals.js    — ML signals overview: distribution, per-market bars
-        ├── performance.js — P&L charts, profit by market, spread timeline
-        └── news.js       — RSS news cards
+        ├── home.js       — Dashboard: status, KPIs, signal summary, top markets, auto-refresh
+        ├── markets.js    — Searchable/paginated market list with signals & volume
+        ├── marketDetail.js — Price chart, orderbook strip, stats, technicals, signals, P&L
+        ├── signals.js    — ML signals: doughnut, distribution, per-market bars, market names
+        ├── performance.js — Cumulative P&L, profit by market, spread timeline
+        └── news.js       — RSS news cards with HTML-stripped summaries
 ```
 
 ## Backend API
 
 - Base URL: `https://polymarket-predictor.up.railway.app/api/v1`
 - Swagger: https://polymarket-predictor.up.railway.app/docs
-- Endpoints: /status, /analytics, /markets, /trades, /orderbook, /signals, /features, /news, /results
+- Endpoints: /status, /analytics, /markets, /markets/{id}, /trades, /orderbook, /signals, /features, /news, /results
 
 ## Key Conventions
 
@@ -51,11 +54,12 @@ public/
 2. **ES Modules** — all JS files use `import`/`export`. Entry loaded with `type="module"`.
 3. **Hash routing** — routes are `#home`, `#markets`, `#market/{id}`, `#signals`, `#performance`, `#news`.
 4. **Screen render pattern** — each screen exports `async function render(container, ...params)`.
-5. **HTML escaping** — always use `escapeHtml()` / `escapeAttr()` from `utils.js` for user content.
+5. **HTML escaping** — always use `escapeHtml()` / `escapeAttr()` from `utils.js` for user content. Use `sanitizeUrl()` for href attributes. Use `stripHtml()` to clean HTML from API text fields.
 6. **AbortController** — call `getSignalController()` at the start of each screen render; check `err.name === 'AbortError'` in catch.
-7. **Chart cleanup** — `destroyAllCharts()` is called automatically on route change.
+7. **Chart cleanup** — `destroyAllCharts()` is called automatically on route change via the router.
 8. **Mobile-first CSS** — CSS custom properties for theming, responsive breakpoints at 480px and 768px.
 9. **Telegram integration** — app detects Telegram WebApp SDK and adapts theme, back button, etc.
+10. **Batch DOM updates** — use `DocumentFragment` for lists; avoid per-item `appendChild`.
 
 ## Common Patterns
 
@@ -73,3 +77,5 @@ public/
 - Use CSS custom properties from `:root` (e.g., `var(--bg-primary)`, `var(--accent)`)
 - Dark mode uses `[data-theme="dark"]` attribute
 - Telegram theme colors override CSS variables at runtime
+- Always use semantic class names; avoid inline styles for reusable patterns
+- Accessibility: use `aria-label`, `role`, `focus-visible` patterns
