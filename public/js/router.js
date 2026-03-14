@@ -1,4 +1,5 @@
 import { destroyAllCharts } from './charts.js';
+import { abortPendingRequests } from './api.js';
 
 let _container = null;
 const _routes = new Map();
@@ -33,6 +34,7 @@ function _handle() {
     const screen = parts[0];
     const params = parts.slice(1);
 
+    abortPendingRequests();
     destroyAllCharts();
 
     const renderFn = _routes.get(screen);
@@ -49,5 +51,6 @@ function _handle() {
         }
     }
 
+    _container.scrollTo(0, 0);
     if (_onNavigate) _onNavigate(screen, params);
 }

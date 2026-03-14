@@ -1,23 +1,32 @@
-import { api } from '../api.js';
-import { formatPrice, formatPnl, formatNumber, formatDate, signalBadge, showLoading, showError } from '../utils.js';
+import { api, getSignalController } from '../api.js';
+import { formatPrice, formatPnl, formatNumber, formatDate, signalBadge, showLoading, showError, showEmpty, escapeHtml, sanitizeUrl } from '../utils.js';
 import { createLineChart, createBarChart } from '../charts.js';
 import { getChartColors } from '../theme.js';
 
 export async function render(container, marketId) {
     marketId = decodeURIComponent(marketId || '');
+
+    if (!marketId) {
+        showEmpty(container, '📊', 'Market Not Found', 'No market ID provided');
+        return;
+    }
+
     showLoading(container);
+    const signal = getSignalController();
 
     try {
-        const [market, trades, signals, features, results] = await Promise.all([
-            api.getMarket(marketId),
-            api.getTrades(marketId, 200),
-            api.getSignals(marketId, 100),
-            api.getFeatures(marketId, 500),
-            api.getResults(marketId, 200),
+        const [market, trades, signals, features, results, orderbook] = await Promise.all([
+            api.getMarket(marketId, signal),
+            api.getTrades(marketId, 200, signal),
+            api.getSignals(marketId, 100, signal),
+            api.getFeatures(marketId, 500, signal),
+            api.getResults(marketId, 200, signal),
+            api.getOrderbook(marketId, 20, signal).catch(() => ({ items: [] })),
         ]);
 
         const tradeItems = (trades.items || []).slice().reverse();
         const signalItems = (signals.items || []).slice().reverse();
+        const orderbookItems = orderbook.items || [];
 
         const latestPrice = tradeItems.length > 0 ? tradeItems[tradeItems.length - 1].price : null;
         const firstPrice = tradeItems.length > 1 ? tradeItems[0].price : latestPrice;
@@ -26,6 +35,8 @@ export async function render(container, marketId) {
 
         const latestSignal = signalItems.length > 0 ? signalItems[signalItems.length - 1] : null;
         const totalVolume = tradeItems.reduce((s, t) => s + (t.size || 0), 0);
+
+        const latestOb = orderbookItems.length > 0 ? orderbookItems[0] : null;
 
         const featureMap = {};
         (features.items || []).forEach(f => {
@@ -37,10 +48,12 @@ export async function render(container, marketId) {
         const resultItems = (results.items || []).slice();
         const totalProfit = resultItems.reduce((s, r) => s + (r.profit || 0), 0);
 
+        const endDateStr = market.end_date ? formatDate(market.end_date) : null;
+
         container.innerHTML = `
             <div class="screen">
                 <div class="detail-header">
-                    <div class="detail-question">${_esc(market.question || market.market_id)}</div>
+                    <div class="detail-question">${escapeHtml(market.question || market.market_id)}</div>
                     ${latestPrice != null ? `
                     <div class="detail-price-row">
                         <span class="detail-price">${formatPrice(latestPrice)}</span>
@@ -50,10 +63,31 @@ export async function render(container, marketId) {
                         ${latestSignal ? `<span>Signal: ${signalBadge(latestSignal.signal_label)}</span>` : ''}
                         ${totalVolume ? `<span>Volume: ${formatNumber(totalVolume)}</span>` : ''}
                         <span>Trades: ${formatNumber(trades.total)}</span>
+                        ${endDateStr ? `<span>Ends: ${endDateStr}</span>` : ''}
+                        ${market.outcome_settled ? '<span class="badge badge-info">Settled</span>' : ''}
                     </div>
                 </div>
 
-                ${market.polymarket_url ? `<a class="detail-link" href="${market.polymarket_url}" target="_blank" rel="noopener">Trade on Polymarket ↗</a>` : ''}
+                ${market.polymarket_url ? `<a class="detail-link" href="${sanitizeUrl(market.polymarket_url)}" target="_blank" rel="noopener">Trade on Polymarket ↗</a>` : ''}
+
+                ${latestOb ? `
+                <div class="orderbook-strip">
+                    <div class="ob-side ob-bid">
+                        <div class="ob-label">Bid</div>
+                        <div class="ob-price">${formatPrice(latestOb.bid_price)}</div>
+                        <div class="ob-qty">${formatNumber(latestOb.bid_qty)} shares</div>
+                    </div>
+                    <div class="ob-spread">
+                        <div class="ob-label">Spread</div>
+                        <div class="ob-price">${((latestOb.ask_price - latestOb.bid_price) * 100).toFixed(1)}¢</div>
+                        <div class="ob-qty">${((latestOb.ask_price - latestOb.bid_price) / ((latestOb.ask_price + latestOb.bid_price) / 2) * 10000).toFixed(0)} bps</div>
+                    </div>
+                    <div class="ob-side ob-ask">
+                        <div class="ob-label">Ask</div>
+                        <div class="ob-price">${formatPrice(latestOb.ask_price)}</div>
+                        <div class="ob-qty">${formatNumber(latestOb.ask_qty)} shares</div>
+                    </div>
+                </div>` : ''}
 
                 ${tradeItems.length > 2 ? `
                 <div class="chart-card">
@@ -62,6 +96,7 @@ export async function render(container, marketId) {
                 </div>` : ''}
 
                 ${_collapsible('trading-stats', 'Trading Stats', _tradingStatsHtml(tradeItems, totalVolume, totalProfit))}
+                ${orderbookItems.length > 1 ? _collapsible('orderbook', 'Orderbook History', _orderbookHtml(orderbookItems)) : ''}
                 ${_collapsible('technicals', 'Technical Indicators', _techHtml(featureMap))}
                 ${_collapsible('signal-history', 'Signal History', _signalHistoryHtml(signalItems))}
                 ${resultItems.length > 0 ? _collapsible('pnl-detail', 'P&L History', `
@@ -74,6 +109,7 @@ export async function render(container, marketId) {
         _renderPriceChart(container, tradeItems);
         _renderPnlChart(container, resultItems);
     } catch (err) {
+        if (err.name === 'AbortError') return;
         showError(container, err.message);
     }
 }
@@ -165,7 +201,7 @@ function _techHtml(featureMap) {
     });
     return `
         <table class="data-table">
-            ${sorted.map(k => `<tr><td>${_esc(k)}</td><td class="text-right font-mono">${featureMap[k].feature_value.toFixed(4)}</td></tr>`).join('')}
+            ${sorted.map(k => `<tr><td>${escapeHtml(k)}</td><td class="text-right font-mono">${featureMap[k].feature_value.toFixed(4)}</td></tr>`).join('')}
         </table>`;
 }
 
@@ -181,6 +217,24 @@ function _signalHistoryHtml(signals) {
                         <td>${formatDate(s.ts)}</td>
                         <td class="font-mono">${s.prediction.toFixed(3)}</td>
                         <td>${signalBadge(s.signal_label)}</td>
+                    </tr>`).join('')}
+            </tbody>
+        </table>`;
+}
+
+function _orderbookHtml(items) {
+    if (items.length === 0) return '<div class="text-secondary" style="font-size:13px">No orderbook data</div>';
+    const recent = items.slice(0, 10);
+    return `
+        <table class="data-table">
+            <thead><tr><th>Time</th><th>Bid</th><th>Ask</th><th>Spread</th></tr></thead>
+            <tbody>
+                ${recent.map(ob => `
+                    <tr>
+                        <td>${formatDate(ob.ts)}</td>
+                        <td class="font-mono text-positive">${formatPrice(ob.bid_price)}</td>
+                        <td class="font-mono text-negative">${formatPrice(ob.ask_price)}</td>
+                        <td class="font-mono">${((ob.ask_price - ob.bid_price) * 100).toFixed(1)}¢</td>
                     </tr>`).join('')}
             </tbody>
         </table>`;
@@ -205,9 +259,3 @@ function _initCollapsibles(container) {
     });
 }
 
-function _esc(s) {
-    if (!s) return '';
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-}

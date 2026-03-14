@@ -16,6 +16,38 @@ export function h(tag, attrs = {}, ...children) {
     return el;
 }
 
+/* ===== Sanitization ===== */
+
+export function escapeHtml(s) {
+    if (!s) return '';
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+export function escapeAttr(s) {
+    if (!s) return '';
+    return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+export function sanitizeUrl(url) {
+    if (!url) return '#';
+    try {
+        const parsed = new URL(url);
+        if (parsed.protocol === 'https:' || parsed.protocol === 'http:') return url;
+    } catch { /* invalid URL */ }
+    return '#';
+}
+
+export function stripHtml(html) {
+    if (!html) return '';
+    const d = document.createElement('div');
+    d.innerHTML = html;
+    return d.textContent || '';
+}
+
+/* ===== Formatting ===== */
+
 export function formatPrice(v) {
     const n = Number(v);
     if (isNaN(n)) return '—';
@@ -49,14 +81,16 @@ export function formatDate(ts) {
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-export function signalBadge(label) {
-    const cls = label === 'buy' ? 'badge-buy' : label === 'sell' ? 'badge-sell' : 'badge-hold';
-    return `<span class="badge ${cls}">${label}</span>`;
-}
-
 export function truncate(str, max = 60) {
     if (!str) return '';
     return str.length > max ? str.slice(0, max) + '…' : str;
+}
+
+/* ===== UI Components ===== */
+
+export function signalBadge(label) {
+    const cls = label === 'buy' ? 'badge-buy' : label === 'sell' ? 'badge-sell' : 'badge-hold';
+    return `<span class="badge ${cls}">${escapeHtml(label)}</span>`;
 }
 
 export function showLoading(container) {
@@ -70,9 +104,9 @@ export function showLoading(container) {
 export function showEmpty(container, icon, title, text) {
     container.innerHTML = `
         <div class="empty-state">
-            <div class="empty-state-icon">${icon}</div>
-            <div class="empty-state-title">${title}</div>
-            <div class="empty-state-text">${text}</div>
+            <div class="empty-state-icon">${escapeHtml(icon)}</div>
+            <div class="empty-state-title">${escapeHtml(title)}</div>
+            <div class="empty-state-text">${escapeHtml(text)}</div>
         </div>`;
 }
 
@@ -81,7 +115,7 @@ export function showError(container, msg) {
         <div class="empty-state">
             <div class="empty-state-icon">⚠️</div>
             <div class="empty-state-title">Error</div>
-            <div class="empty-state-text">${msg}</div>
+            <div class="empty-state-text">${escapeHtml(msg)}</div>
         </div>`;
 }
 

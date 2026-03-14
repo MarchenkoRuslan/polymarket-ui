@@ -1,12 +1,20 @@
 {
   "name": "polymarket-ui",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "start": "serve public -l ${PORT:-3000} -s",
-    "dev": "serve public -l 3000 -s"
+    "dev": "serve public -l 3000 -s",
+    "lint": "eslint public/js/ public/sw.js",
+    "lint:fix": "eslint public/js/ public/sw.js --fix",
+    "check": "node --check public/js/*.js public/js/screens/*.js public/sw.js"
   },
   "dependencies": {
     "serve": "^14.2.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.4",
+    "globals": "^15.15.0"
   }
 }

@@ -40,17 +40,27 @@ document.addEventListener('DOMContentLoaded', () => {
     registerRoute('performance', performanceRender);
     registerRoute('news', newsRender);
 
+    let _backHandler = null;
+
     initRouter(content, (screen) => {
         updateNavActive(screen);
 
-        if (tg && DETAIL_SCREENS.has(screen)) {
-            tg.BackButton.show();
-            tg.BackButton.onClick(() => {
-                window.history.back();
+        if (tg) {
+            if (_backHandler) {
+                tg.BackButton.offClick(_backHandler);
+                _backHandler = null;
+            }
+
+            if (DETAIL_SCREENS.has(screen)) {
+                _backHandler = () => {
+                    window.history.back();
+                    tg.BackButton.hide();
+                };
+                tg.BackButton.onClick(_backHandler);
+                tg.BackButton.show();
+            } else {
                 tg.BackButton.hide();
-            });
-        } else if (tg) {
-            tg.BackButton.hide();
+            }
         }
     });
 
@@ -62,7 +72,8 @@ function renderNav(navBar) {
         const btn = document.createElement('button');
         btn.className = 'nav-item';
         btn.dataset.screen = item.id;
-        btn.innerHTML = `<span class="nav-icon">${item.icon}</span><span>${item.label}</span>`;
+        btn.setAttribute('aria-label', item.label);
+        btn.innerHTML = `<span class="nav-icon" aria-hidden="true">${item.icon}</span><span>${item.label}</span>`;
         btn.addEventListener('click', () => navigate(item.id));
         navBar.appendChild(btn);
     });

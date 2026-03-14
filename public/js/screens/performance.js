@@ -1,13 +1,14 @@
-import { api } from '../api.js';
-import { formatPnl, formatNumber, showLoading, showEmpty, showError } from '../utils.js';
+import { api, getSignalController } from '../api.js';
+import { formatPnl, formatNumber, truncate, showLoading, showEmpty, showError, escapeHtml } from '../utils.js';
 import { createLineChart, createBarChart } from '../charts.js';
 import { getChartColors } from '../theme.js';
 
 export async function render(container) {
     showLoading(container);
+    const signal = getSignalController();
 
     try {
-        const analytics = await api.getAnalytics();
+        const analytics = await api.getAnalytics(signal);
 
         const pnl = analytics.pnl_timeline || [];
         const tradeStats = analytics.trade_stats || [];
@@ -133,6 +134,7 @@ export async function render(container) {
             }
         }
     } catch (err) {
+        if (err.name === 'AbortError') return;
         showError(container, err.message);
     }
 }
@@ -145,9 +147,5 @@ function _shortTs(ts) {
 }
 
 function _truncId(id) {
-    if (!id) return '';
-    const s = id.length > 12 ? id.slice(0, 10) + '…' : id;
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
+    return escapeHtml(truncate(id, 12));
 }
