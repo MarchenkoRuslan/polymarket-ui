@@ -1,5 +1,5 @@
 import { api, getSignalController } from '../api.js';
-import { formatPrice, formatPnl, formatNumber, signalBadge, truncate, sparklineSVG, showLoading, showError, escapeHtml, escapeAttr, formatDate } from '../utils.js';
+import { formatPrice, formatPnl, formatNumber, signalBadge, truncate, sparklineSVG, showLoading, showError, escapeHtml, escapeAttr } from '../utils.js';
 import { createDoughnutChart } from '../charts.js';
 import { navigate, currentScreen } from '../router.js';
 
